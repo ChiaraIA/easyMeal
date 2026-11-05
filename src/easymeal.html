@@ -55,7 +55,7 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 0 48px;
 }
-button, input { font: inherit; color: inherit; }
+button, input, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
 
@@ -147,6 +147,11 @@ h3 { font-family: var(--f-display); font-weight: 600; font-size: 17px; margin: 0
 .item .g span { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 12px; pointer-events: none; }
 .empty-card { border: 1.5px dashed var(--line); border-radius: var(--r); padding: 22px; text-align: center; color: var(--muted); display: flex; flex-direction: column; gap: 10px; align-items: center; }
 .empty-card strong { color: var(--ink); font-family: var(--f-display); font-size: 17px; }
+.block { display: flex; flex-direction: column; gap: 14px; }
+.block + .block, #rec-new-row + .block { padding-top: 4px; }
+textarea.input { resize: vertical; min-height: 76px; line-height: 1.45; }
+.field label .opt { font-weight: 400; color: var(--muted); }
+.rcard .desc { margin: 0; color: var(--muted); font-size: 13.5px; white-space: pre-line; overflow-wrap: anywhere; }
 .editing-note { background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 /* ---------- etichetta nutrizionale ---------- */
@@ -242,45 +247,66 @@ table.data tr.is-editing td { background: var(--accent-soft); }
   <!-- ===================== RICETTA ===================== -->
   <section data-view="ricetta" hidden>
     <div>
-      <h2 id="builder-title">Cosa stai cucinando?</h2>
-      <p class="lede">Aggiungi gli ingredienti della dispensa con i grammi che usi: l'etichetta si aggiorna mentre scrivi. Salvala nel ricettario oppure annulla se volevi solo fare il conto.</p>
+      <h2>Ricetta</h2>
+      <p class="lede">Fai il conto delle macro di un piatto al volo qui sotto, oppure crea una ricetta da tenere nel ricettario.</p>
     </div>
-    <div class="builder">
-      <div class="panel">
-        <div id="editing-note"></div>
-        <div class="meta">
-          <div class="field">
-            <label for="r-name">Nome del piatto</label>
-            <input class="input" id="r-name" placeholder="es. Pasta zucchine e parmigiano" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="r-portions">Porzioni</label>
-            <input class="input num" id="r-portions" inputmode="numeric" value="1" autocomplete="off">
-          </div>
-        </div>
-        <div class="picker">
-          <div class="field">
-            <label for="p-search">Ingrediente</label>
-            <input class="input" id="p-search" placeholder="Cerca nella dispensa…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="p-suggest" aria-autocomplete="list">
-          </div>
-          <div class="field">
-            <label for="p-grams">Grammi</label>
-            <input class="input num" id="p-grams" inputmode="decimal" placeholder="0" autocomplete="off">
-          </div>
-          <button class="btn primary" id="p-add" type="button">Aggiungi</button>
-          <ul class="suggest" id="p-suggest" role="listbox" hidden></ul>
-        </div>
-        <p class="warn" id="p-msg" hidden></p>
-        <ul class="items" id="items"></ul>
+    <div class="row" id="rec-new-row">
+      <button class="btn primary" id="rec-new" type="button">+ Aggiungi nuova ricetta</button>
+    </div>
+
+    <!-- Nuova ricetta / modifica: chiusa finché non premi il pulsante -->
+    <div class="block" id="rec-editor" hidden>
+      <div class="row">
+        <h3 id="rec-title">Nuova ricetta</h3>
       </div>
-      <aside class="label-col" aria-label="Valori nutrizionali della ricetta">
-        <div class="nlabel" id="label"></div>
-        <div class="actions">
-          <button class="btn" id="r-cancel" type="button">Annulla</button>
-          <button class="btn primary" id="r-save" type="button">Salva nel ricettario</button>
+      <div id="editing-note"></div>
+      <div class="builder">
+        <div class="panel">
+          <div class="meta">
+            <div class="field">
+              <label for="r-name">Nome del piatto</label>
+              <input class="input" id="r-name" placeholder="es. Pasta zucchine e parmigiano" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="r-portions">Porzioni</label>
+              <input class="input num" id="r-portions" inputmode="numeric" value="1" autocomplete="off">
+            </div>
+          </div>
+          <div class="field">
+            <label for="r-desc">Descrizione <span class="opt">facoltativa</span></label>
+            <textarea class="input" id="r-desc" rows="3" placeholder="Come la prepari, cottura, varianti…"></textarea>
+          </div>
+          <div id="rec-builder"></div>
         </div>
-        <p class="warn" id="r-msg" hidden></p>
-      </aside>
+        <aside class="label-col" aria-label="Valori nutrizionali della ricetta">
+          <div class="nlabel" id="rec-label"></div>
+          <div class="actions">
+            <button class="btn" id="r-cancel" type="button">Annulla</button>
+            <button class="btn primary" id="r-save" type="button">Salva nel ricettario</button>
+          </div>
+          <p class="warn" id="r-msg" hidden></p>
+        </aside>
+      </div>
+    </div>
+
+    <!-- Calcolo veloce: sempre aperto, solo ingredienti -->
+    <div class="block" id="calc">
+      <div>
+        <h3>Calcolo valori nutrizionali</h3>
+        <p class="hint">Aggiungi gli ingredienti della dispensa con i grammi: ottieni subito le macro del piatto. Questo conto non finisce nel ricettario.</p>
+      </div>
+      <div class="builder">
+        <div class="panel">
+          <div id="calc-builder"></div>
+        </div>
+        <aside class="label-col" aria-label="Valori nutrizionali del piatto">
+          <div class="nlabel" id="calc-label"></div>
+          <div class="actions">
+            <button class="btn" id="c-clear" type="button">Svuota</button>
+            <button class="btn" id="c-torecipe" type="button">Salva come ricetta</button>
+          </div>
+        </aside>
+      </div>
     </div>
   </section>
 
@@ -335,7 +361,7 @@ table.data tr.is-editing td { background: var(--accent-soft); }
     <div class="row">
       <div class="field" style="flex:1 1 240px">
         <label for="book-q">Cerca</label>
-        <input class="input" id="book-q" placeholder="Nome della ricetta o ingrediente…" autocomplete="off">
+        <input class="input" id="book-q" placeholder="Nome, descrizione o ingrediente…" autocomplete="off">
       </div>
     </div>
     <div id="book"></div>
@@ -469,24 +495,34 @@ const Store = {
 /* =========================================================
    Stato dell'app
    ========================================================= */
-const DRAFT_KEY = "easymeal:draft";
-const emptyDraft = () => ({ name: "", portions: 1, items: [], editingId: null });
-function loadDraft() {
-  try { const d = JSON.parse(localStorage.getItem(DRAFT_KEY)); if (d && Array.isArray(d.items)) return { ...emptyDraft(), ...d }; } catch (_) {}
-  return emptyDraft();
+const DRAFT_KEY = "easymeal:draft";   // ricetta in scrittura
+const CALC_KEY = "easymeal:calc";     // calcolo veloce
+const emptyDraft = () => ({ name: "", description: "", portions: 1, items: [], editingId: null, open: false });
+const emptyCalc = () => ({ items: [] });
+function loadLS(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; } }
+const lsTimers = {};
+function saveLS(key, obj) {
+  clearTimeout(lsTimers[key]);
+  lsTimers[key] = setTimeout(() => { try { localStorage.setItem(key, JSON.stringify(obj)); } catch (_) {} }, 250);
 }
-let draftTimer = 0;
-function saveDraft() {
-  clearTimeout(draftTimer);
-  draftTimer = setTimeout(() => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(S.draft)); } catch (_) {} }, 250);
+function loadDrafts() {
+  let draft = loadLS(DRAFT_KEY), calc = loadLS(CALC_KEY);
+  draft = draft && Array.isArray(draft.items) ? { ...emptyDraft(), ...draft } : emptyDraft();
+  calc = calc && Array.isArray(calc.items) ? calc : emptyCalc();
+  // Bozze della versione precedente (senza "open"): con un nome restano una ricetta, senza diventano un calcolo.
+  if (!("open" in (loadLS(DRAFT_KEY) || {})) && draft.items.length) {
+    if (draft.name || draft.editingId) draft.open = true;
+    else if (!calc.items.length) { calc = { items: draft.items }; draft = emptyDraft(); }
+  }
+  return { draft, calc };
 }
+const initial = loadDrafts();
 
 const S = {
   ingredients: [], recipes: [],
   loaded: { ingredients: false, recipes: false },
-  draft: loadDraft(),
+  draft: initial.draft, calc: initial.calc,
   editIngId: null, confirmIng: null, confirmRec: null,
-  pick: null, suggestIdx: 0,
   readOnly: false,
 };
 const byName = (a, b) => a.name.localeCompare(b.name, "it", { sensitivity: "base" });
@@ -545,80 +581,39 @@ function toast(msg, action) {
 }
 
 /* =========================================================
-   RICETTA — editor
+   RICETTA — componente "ingredienti + etichetta"
+   Usato due volte: calcolo veloce e nuova ricetta.
    ========================================================= */
-const elName = $("#r-name"), elPortions = $("#r-portions");
-const elSearch = $("#p-search"), elGrams = $("#p-grams"), elSuggest = $("#p-suggest");
-
 function itemValues(it) {
   // Se l'ingrediente esiste ancora in dispensa usiamo i valori aggiornati.
   const live = it.ingId && ingById(it.ingId);
   return live ? pickVals(live) : it.v;
 }
 const pickVals = o => Object.fromEntries(KEYS.map(k => [k, +o[k] || 0]));
-const liveItems = () => S.draft.items.map(it => ({ ...it, v: itemValues(it), name: (it.ingId && ingById(it.ingId)?.name) || it.name }));
+const liveOf = items => items.map(it => ({ ...it, v: itemValues(it), name: (it.ingId && ingById(it.ingId)?.name) || it.name }));
+const clone = o => JSON.parse(JSON.stringify(o));
 
-function renderDraftMeta() {
-  if (document.activeElement !== elName) elName.value = S.draft.name;
-  if (document.activeElement !== elPortions) elPortions.value = S.draft.portions;
-  const note = $("#editing-note");
-  const editing = S.draft.editingId && S.recipes.find(r => r.id === S.draft.editingId);
-  $("#builder-title").textContent = editing ? "Stai modificando una ricetta" : "Cosa stai cucinando?";
-  if (editing) {
-    note.innerHTML = `<div class="editing-note">Modifichi <strong>${esc(editing.name)}</strong> dal ricettario. <button class="btn ghost" type="button" data-act="detach">Salva come nuova invece</button></div>`;
-  } else note.innerHTML = "";
-  $("#r-save").textContent = editing ? "Aggiorna nel ricettario" : "Salva nel ricettario";
-}
-
-function renderItems() {
-  const ul = $("#items");
-  if (!S.draft.items.length) {
-    const noIng = S.loaded.ingredients && !S.ingredients.length;
-    ul.innerHTML = `<li class="empty-card">
-      <strong>${noIng ? "La dispensa è ancora vuota" : "Nessun ingrediente nel piatto"}</strong>
-      <span>${noIng
-        ? "Prima inserisci gli ingredienti con la loro tabella nutrizionale, poi torna qui a comporre il piatto."
-        : "Cerca un ingrediente qui sopra, scrivi i grammi e premi Invio."}</span>
-      ${noIng ? `<a class="btn primary" href="#dispensa">Vai alla dispensa</a>` : ""}
-    </li>`;
-    return;
-  }
-  ul.innerHTML = liveItems().map((it, i) => {
-    const g = +it.grams || 0;
-    return `<li class="item" data-i="${i}">
-      <div>
-        <div class="nm">${esc(it.name)}${it.ingId && !ingById(it.ingId) && S.loaded.ingredients ? '<span class="tag">non più in dispensa</span>' : ""}</div>
-        <div class="sub" data-line="${i}">${lineSummary(it.v, g)}</div>
-      </div>
-      <div class="g"><input class="input num" inputmode="decimal" aria-label="Grammi di ${esc(it.name)}" data-grams="${i}" value="${esc(nfIn.format(g))}"><span>g</span></div>
-      <button class="btn ghost" type="button" data-remove="${i}" aria-label="Togli ${esc(it.name)}" title="Togli">✕</button>
-    </li>`;
-  }).join("");
-}
 function lineSummary(v, g) {
   const f = g / 100;
   return `<span>C ${fmt("carbs", v.carbs * f)}</span><span>G ${fmt("fat", v.fat * f)}</span><span>P ${fmt("protein", v.protein * f)}</span><span>${nf0.format(kcalOf(scale(v, f)))} kcal</span>`;
 }
 
-function renderLabel() {
-  const items = liveItems();
+function labelHTML(items, name, portionsIn) {
   const { t, grams } = totalsOf(items);
-  const portions = Math.max(1, Math.round(+S.draft.portions || 1));
+  const portions = Math.max(1, Math.round(+portionsIn || 1));
   const per = scale(t, 1 / portions);
   const per100 = grams > 0 ? scale(t, 100 / grams) : zero();
   const cols = [{ h: "Totale<br>piatto", v: t }];
   if (portions > 1) cols.push({ h: `Per<br>porzione`, v: per });
   cols.push({ h: "Per<br>100 g", v: per100 });
-
   const row = (label, getter, cls = "") =>
     `<tr class="${cls}"><td>${label}</td>${cols.map(c => `<td>${getter(c.v)}</td>`).join("")}</tr>`;
   const kc = kcalOf(t);
   const pc = kc > 0 ? k => (t[k] * KCAL[k] / kc) * 100 : () => 0;
-
-  $("#label").innerHTML = `
+  return `
     <h3>Valori nutrizionali</h3>
     <table>
-      <thead><tr><th>${S.draft.name ? esc(S.draft.name) : "Il tuo piatto"}<br><span class="num" style="font-weight:400">${nf0.format(grams)} g in tutto</span></th>${cols.map(c => `<th>${c.h}</th>`).join("")}</tr></thead>
+      <thead><tr><th>${name ? esc(name) : "Il tuo piatto"}<br><span class="num" style="font-weight:400">${nf0.format(grams)} g in tutto</span></th>${cols.map(c => `<th>${c.h}</th>`).join("")}</tr></thead>
       <tbody>
         ${row("Energia (calcolata)", v => nf0.format(kcalOf(v)) + " kcal", "energy strong")}
         ${row(`<span class="dot" style="background:var(--c-fat)"></span>Grassi`, v => fmt("fat", v.fat) + " g", "strong")}
@@ -634,107 +629,221 @@ function renderLabel() {
     </div>
     <div class="split-legend">${["carbs", "fat", "protein"].map(k => `<span>${MACROS.find(m => m.k === k).short} ${nf0.format(pc(k))}%</span>`).join("")}</div>
     <p class="foot">Energia stimata con i fattori UE: 4 kcal/g carboidrati e proteine, 9 grassi, 2 fibre. La barra mostra da dove arrivano le calorie.</p>`;
-  $("#r-save").disabled = !S.draft.items.length;
 }
 
-function renderBuilder() { renderDraftMeta(); renderItems(); renderLabel(); }
+/**
+ * Monta ricerca ingrediente + grammi + lista + etichetta.
+ * getDraft() restituisce l'oggetto {items, name?, portions?} da modificare,
+ * persist() lo salva, onChange() avvisa il chiamante.
+ */
+function makeBuilder(prefix, mount, labelEl, getDraft, persist, onChange = () => {}) {
+  mount.innerHTML = `
+    <div class="picker">
+      <div class="field">
+        <label for="${prefix}-search">Ingrediente</label>
+        <input class="input" id="${prefix}-search" placeholder="Cerca nella dispensa…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="${prefix}-suggest" aria-autocomplete="list">
+      </div>
+      <div class="field">
+        <label for="${prefix}-grams">Grammi</label>
+        <input class="input num" id="${prefix}-grams" inputmode="decimal" placeholder="0" autocomplete="off">
+      </div>
+      <button class="btn primary" type="button" data-add>Aggiungi</button>
+      <ul class="suggest" id="${prefix}-suggest" role="listbox" hidden></ul>
+    </div>
+    <p class="warn" data-msg hidden></p>
+    <ul class="items"></ul>`;
+  const elSearch = mount.querySelector(`#${prefix}-search`), elGrams = mount.querySelector(`#${prefix}-grams`);
+  const elSuggest = mount.querySelector(".suggest"), elItems = mount.querySelector(".items");
+  const elMsg = mount.querySelector("[data-msg]"), picker = mount.querySelector(".picker");
+  const st = { pick: null, idx: 0 };
+  const d = getDraft;
 
-/* --- picker con suggerimenti --- */
-function matches() {
-  const q = norm(elSearch.value);
-  const list = [...S.ingredients].sort(byName);
-  return (q ? list.filter(i => norm(i.name).includes(q)) : list).slice(0, 8);
-}
-function openSuggest() {
-  const m = matches();
-  if (!S.ingredients.length) {
-    elSuggest.innerHTML = `<li class="empty">La dispensa è vuota. <a href="#dispensa">Aggiungi ingredienti</a></li>`;
-  } else if (!m.length) {
-    elSuggest.innerHTML = `<li class="empty">Nessun ingrediente con questo nome. <a href="#dispensa">Crealo in dispensa</a></li>`;
-  } else {
-    S.suggestIdx = Math.min(S.suggestIdx, m.length - 1);
-    elSuggest.innerHTML = m.map((i, idx) => `<li role="option" data-pick="${esc(i.id)}" aria-selected="${idx === S.suggestIdx}">
-      <span>${esc(i.name)}</span><small>C ${fmt("carbs", i.carbs)} · G ${fmt("fat", i.fat)} · P ${fmt("protein", i.protein)}</small></li>`).join("");
+  function renderItems() {
+    const items = d().items;
+    if (!items.length) {
+      const noIng = S.loaded.ingredients && !S.ingredients.length;
+      elItems.innerHTML = `<li class="empty-card">
+        <strong>${noIng ? "La dispensa è ancora vuota" : "Nessun ingrediente nel piatto"}</strong>
+        <span>${noIng
+          ? "Prima inserisci gli ingredienti con la loro tabella nutrizionale, poi torna qui."
+          : "Cerca un ingrediente qui sopra, scrivi i grammi e premi Invio."}</span>
+        ${noIng ? `<a class="btn primary" href="#dispensa">Vai alla dispensa</a>` : ""}
+      </li>`;
+      return;
+    }
+    elItems.innerHTML = liveOf(items).map((it, i) => {
+      const g = +it.grams || 0;
+      return `<li class="item">
+        <div>
+          <div class="nm">${esc(it.name)}${it.ingId && !ingById(it.ingId) && S.loaded.ingredients ? '<span class="tag">non più in dispensa</span>' : ""}</div>
+          <div class="sub" data-line="${i}">${lineSummary(it.v, g)}</div>
+        </div>
+        <div class="g"><input class="input num" inputmode="decimal" aria-label="Grammi di ${esc(it.name)}" data-grams="${i}" value="${esc(nfIn.format(g))}"><span>g</span></div>
+        <button class="btn ghost" type="button" data-remove="${i}" aria-label="Togli ${esc(it.name)}" title="Togli">✕</button>
+      </li>`;
+    }).join("");
   }
-  elSuggest.hidden = false; elSearch.setAttribute("aria-expanded", "true");
-}
-function closeSuggest() { elSuggest.hidden = true; elSearch.setAttribute("aria-expanded", "false"); }
-function choose(id) {
-  const ing = ingById(id); if (!ing) return;
-  S.pick = id; elSearch.value = ing.name; closeSuggest(); elGrams.focus(); elGrams.select();
-}
-function addPicked() {
-  const msg = $("#p-msg"); msg.hidden = true;
-  let id = S.pick;
-  if (!id || ingById(id)?.name !== elSearch.value) {
-    // l'utente ha scritto un nome senza cliccare: prendi la corrispondenza esatta o l'unica
+  function renderLabel() {
+    labelEl.innerHTML = labelHTML(liveOf(d().items), d().name, d().portions);
+    onChange();
+  }
+
+  function matches() {
+    const q = norm(elSearch.value);
+    const list = [...S.ingredients].sort(byName);
+    return (q ? list.filter(i => norm(i.name).includes(q)) : list).slice(0, 8);
+  }
+  function openSuggest() {
     const m = matches();
-    const exact = m.find(i => norm(i.name) === norm(elSearch.value));
-    id = exact ? exact.id : (m.length === 1 ? m[0].id : null);
+    if (!S.ingredients.length) {
+      elSuggest.innerHTML = `<li class="empty">La dispensa è vuota. <a href="#dispensa">Aggiungi ingredienti</a></li>`;
+    } else if (!m.length) {
+      elSuggest.innerHTML = `<li class="empty">Nessun ingrediente con questo nome. <a href="#dispensa">Crealo in dispensa</a></li>`;
+    } else {
+      st.idx = Math.min(st.idx, m.length - 1);
+      elSuggest.innerHTML = m.map((i, idx) => `<li role="option" data-pick="${esc(i.id)}" aria-selected="${idx === st.idx}">
+        <span>${esc(i.name)}</span><small>C ${fmt("carbs", i.carbs)} · G ${fmt("fat", i.fat)} · P ${fmt("protein", i.protein)}</small></li>`).join("");
+    }
+    elSuggest.hidden = false; elSearch.setAttribute("aria-expanded", "true");
   }
-  const ing = id && ingById(id);
-  if (!ing) { msg.textContent = "Scegli un ingrediente dall'elenco della dispensa."; msg.hidden = false; elSearch.focus(); return; }
-  const g = parseNum(elGrams.value);
-  if (!(g > 0)) { msg.textContent = "Scrivi quanti grammi hai usato."; msg.hidden = false; elGrams.focus(); return; }
-  const existing = S.draft.items.find(it => it.ingId === id);
-  if (existing) { existing.grams = +(existing.grams + g).toFixed(2); toast(`${ing.name}: aggiunti altri ${nfIn.format(g)} g`); }
-  else S.draft.items.push({ key: uid("it"), ingId: id, name: ing.name, grams: g, v: pickVals(ing) });
-  S.pick = null; elSearch.value = ""; elGrams.value = "";
-  saveDraft(); renderItems(); renderLabel(); elSearch.focus();
+  function closeSuggest() { elSuggest.hidden = true; elSearch.setAttribute("aria-expanded", "false"); }
+  function choose(id) {
+    const ing = ingById(id); if (!ing) return;
+    st.pick = id; elSearch.value = ing.name; closeSuggest(); elGrams.focus(); elGrams.select();
+  }
+  function addPicked() {
+    elMsg.hidden = true;
+    let id = st.pick;
+    if (!id || ingById(id)?.name !== elSearch.value) {
+      // nome scritto senza cliccare: corrispondenza esatta o unica
+      const m = matches();
+      const exact = m.find(i => norm(i.name) === norm(elSearch.value));
+      id = exact ? exact.id : (m.length === 1 ? m[0].id : null);
+    }
+    const ing = id && ingById(id);
+    if (!ing) { elMsg.textContent = "Scegli un ingrediente dall'elenco della dispensa."; elMsg.hidden = false; elSearch.focus(); return; }
+    const g = parseNum(elGrams.value);
+    if (!(g > 0)) { elMsg.textContent = "Scrivi quanti grammi hai usato."; elMsg.hidden = false; elGrams.focus(); return; }
+    const items = d().items;
+    const existing = items.find(it => it.ingId === id);
+    if (existing) { existing.grams = +(existing.grams + g).toFixed(2); toast(`${ing.name}: aggiunti altri ${nfIn.format(g)} g`); }
+    else items.push({ key: uid("it"), ingId: id, name: ing.name, grams: g, v: pickVals(ing) });
+    st.pick = null; elSearch.value = ""; elGrams.value = "";
+    persist(); renderItems(); renderLabel(); elSearch.focus();
+  }
+
+  elSearch.addEventListener("input", () => { st.pick = null; st.idx = 0; openSuggest(); });
+  elSearch.addEventListener("click", openSuggest);
+  elSearch.addEventListener("keydown", e => {
+    const opts = [...elSuggest.querySelectorAll("[data-pick]")];
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault(); if (elSuggest.hidden) openSuggest();
+      if (!opts.length) return;
+      st.idx = (st.idx + (e.key === "ArrowDown" ? 1 : -1) + opts.length) % opts.length; openSuggest();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (!elSuggest.hidden && opts[st.idx]) choose(opts[st.idx].dataset.pick);
+      else elGrams.focus();
+    } else if (e.key === "Escape") closeSuggest();
+  });
+  elSuggest.addEventListener("mousedown", e => {
+    const li = e.target.closest("[data-pick]"); if (li) { e.preventDefault(); choose(li.dataset.pick); }
+  });
+  document.addEventListener("click", e => { if (!picker.contains(e.target)) closeSuggest(); });
+  elGrams.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addPicked(); } });
+  mount.querySelector("[data-add]").addEventListener("click", addPicked);
+
+  elItems.addEventListener("input", e => {
+    const i = e.target.dataset.grams; if (i == null) return;
+    const g = parseNum(e.target.value);
+    e.target.setAttribute("aria-invalid", Number.isNaN(g) ? "true" : "false");
+    if (Number.isNaN(g)) return;
+    const it = d().items[+i]; it.grams = g; persist();
+    const line = elItems.querySelector(`[data-line="${i}"]`);
+    if (line) line.innerHTML = lineSummary(itemValues(it), g);
+    renderLabel();
+  });
+  elItems.addEventListener("click", e => {
+    const b = e.target.closest("[data-remove]"); if (!b) return;
+    const i = +b.dataset.remove; const [removed] = d().items.splice(i, 1);
+    persist(); renderItems(); renderLabel();
+    toast(`Tolto ${removed.name}`, { label: "Rimetti", run: () => { d().items.splice(i, 0, removed); persist(); renderItems(); renderLabel(); } });
+  });
+
+  return {
+    render() { renderItems(); renderLabel(); },
+    renderLabel,
+    refreshSuggest() { if (!elSuggest.hidden) openSuggest(); },
+    focus() { elSearch.focus(); },
+  };
 }
 
-elSearch.addEventListener("input", () => { S.pick = null; S.suggestIdx = 0; openSuggest(); });
-elSearch.addEventListener("click", openSuggest);
-elSearch.addEventListener("keydown", e => {
-  const opts = [...elSuggest.querySelectorAll("[data-pick]")];
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-    e.preventDefault(); if (elSuggest.hidden) openSuggest();
-    if (!opts.length) return;
-    S.suggestIdx = (S.suggestIdx + (e.key === "ArrowDown" ? 1 : -1) + opts.length) % opts.length; openSuggest();
-  } else if (e.key === "Enter") {
-    e.preventDefault();
-    if (!elSuggest.hidden && opts[S.suggestIdx]) choose(opts[S.suggestIdx].dataset.pick);
-    else elGrams.focus();
-  } else if (e.key === "Escape") closeSuggest();
+/* --- Calcolo veloce --- */
+const calcB = makeBuilder("c", $("#calc-builder"), $("#calc-label"), () => S.calc, () => saveLS(CALC_KEY, S.calc), () => {
+  const empty = !S.calc.items.length;
+  $("#c-clear").disabled = empty; $("#c-torecipe").disabled = empty;
 });
-elSuggest.addEventListener("mousedown", e => {
-  const li = e.target.closest("[data-pick]"); if (li) { e.preventDefault(); choose(li.dataset.pick); }
+$("#c-clear").addEventListener("click", () => {
+  const prev = clone(S.calc);
+  S.calc = emptyCalc(); saveLS(CALC_KEY, S.calc); calcB.render();
+  toast("Calcolo svuotato", { label: "Ripristina", run: () => { S.calc = prev; saveLS(CALC_KEY, S.calc); calcB.render(); } });
 });
-document.addEventListener("click", e => { if (!e.target.closest(".picker")) closeSuggest(); });
-elGrams.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addPicked(); } });
-$("#p-add").addEventListener("click", addPicked);
+$("#c-torecipe").addEventListener("click", () => {
+  // Copia: il calcolo si svuota solo se la ricetta viene salvata davvero.
+  S.draft = { ...emptyDraft(), items: clone(S.calc.items), open: true, fromCalc: true };
+  saveLS(DRAFT_KEY, S.draft); renderEditor(); recB.render();
+  elName.focus();
+  toast("Dai un nome alla ricetta e salvala");
+});
 
-elName.addEventListener("input", () => { S.draft.name = elName.value; saveDraft(); renderLabel(); });
+/* --- Nuova ricetta / modifica --- */
+const elName = $("#r-name"), elPortions = $("#r-portions"), elDesc = $("#r-desc");
+const recB = makeBuilder("r", $("#rec-builder"), $("#rec-label"), () => S.draft, () => saveLS(DRAFT_KEY, S.draft), () => {
+  $("#r-save").disabled = !S.draft.items.length;
+});
+
+function renderEditor() {
+  const open = !!S.draft.open;
+  $("#rec-editor").hidden = !open;
+  $("#calc").hidden = open;
+  $("#rec-new-row").hidden = open;
+  if (!open) return;
+  if (document.activeElement !== elName) elName.value = S.draft.name;
+  if (document.activeElement !== elPortions) elPortions.value = S.draft.portions;
+  if (document.activeElement !== elDesc) elDesc.value = S.draft.description || "";
+  const editing = S.draft.editingId && S.recipes.find(r => r.id === S.draft.editingId);
+  $("#rec-title").textContent = editing ? "Modifica ricetta" : "Nuova ricetta";
+  $("#editing-note").innerHTML = editing
+    ? `<div class="editing-note">Modifichi <strong>${esc(editing.name)}</strong> dal ricettario. <button class="btn ghost" type="button" data-act="detach">Salva come nuova invece</button></div>`
+    : "";
+  $("#r-save").textContent = editing ? "Aggiorna nel ricettario" : "Salva nel ricettario";
+}
+function openEditor() {
+  S.draft.open = true; saveLS(DRAFT_KEY, S.draft); renderEditor(); recB.render();
+  $("#rec-editor").scrollIntoView({ behavior: "smooth", block: "start" });
+  elName.focus({ preventScroll: true });
+}
+function closeEditor() {
+  S.draft = emptyDraft(); saveLS(DRAFT_KEY, S.draft); $("#r-msg").hidden = true;
+  renderEditor(); recB.render();
+}
+
+$("#rec-new").addEventListener("click", openEditor);
+elName.addEventListener("input", () => { S.draft.name = elName.value; saveLS(DRAFT_KEY, S.draft); recB.renderLabel(); });
+elDesc.addEventListener("input", () => { S.draft.description = elDesc.value; saveLS(DRAFT_KEY, S.draft); });
 elPortions.addEventListener("input", () => {
   const n = parseNum(elPortions.value);
-  S.draft.portions = n >= 1 ? Math.round(n) : 1; saveDraft(); renderLabel();
-});
-
-$("#items").addEventListener("input", e => {
-  const i = e.target.dataset.grams; if (i == null) return;
-  const g = parseNum(e.target.value);
-  e.target.setAttribute("aria-invalid", Number.isNaN(g) ? "true" : "false");
-  if (Number.isNaN(g)) return;
-  const it = S.draft.items[+i]; it.grams = g; saveDraft();
-  const line = document.querySelector(`[data-line="${i}"]`);
-  if (line) line.innerHTML = lineSummary(itemValues(it), g);
-  renderLabel();
-});
-$("#items").addEventListener("click", e => {
-  const b = e.target.closest("[data-remove]"); if (!b) return;
-  const i = +b.dataset.remove; const [removed] = S.draft.items.splice(i, 1);
-  saveDraft(); renderItems(); renderLabel();
-  toast(`Tolto ${removed.name}`, { label: "Rimetti", run: () => { S.draft.items.splice(i, 0, removed); saveDraft(); renderItems(); renderLabel(); } });
+  S.draft.portions = n >= 1 ? Math.round(n) : 1; saveLS(DRAFT_KEY, S.draft); recB.renderLabel();
 });
 $("#editing-note").addEventListener("click", e => {
-  if (e.target.closest('[data-act="detach"]')) { S.draft.editingId = null; saveDraft(); renderDraftMeta(); }
+  if (e.target.closest('[data-act="detach"]')) { S.draft.editingId = null; saveLS(DRAFT_KEY, S.draft); renderEditor(); }
 });
 
 $("#r-cancel").addEventListener("click", () => {
-  const prev = JSON.parse(JSON.stringify(S.draft));
-  const had = prev.items.length || prev.name;
-  S.draft = emptyDraft(); saveDraft(); renderBuilder(); $("#r-msg").hidden = true;
-  if (had) toast("Ricetta annullata", { label: "Ripristina", run: () => { S.draft = prev; saveDraft(); renderBuilder(); } });
+  const prev = clone(S.draft);
+  const had = prev.items.length || prev.name || prev.description;
+  closeEditor();
+  if (had) toast("Ricetta annullata", { label: "Ripristina", run: () => { S.draft = prev; saveLS(DRAFT_KEY, S.draft); renderEditor(); recB.render(); } });
 });
 
 $("#r-save").addEventListener("click", async () => {
@@ -742,23 +851,38 @@ $("#r-save").addEventListener("click", async () => {
   const name = S.draft.name.trim();
   if (!name) { msg.textContent = "Dai un nome al piatto prima di salvarlo."; msg.hidden = false; elName.focus(); return; }
   if (!S.draft.items.length) return;
-  const items = liveItems().map(it => ({ ingId: it.ingId || null, name: it.name, grams: +it.grams || 0, v: pickVals(it.v) }));
+  const items = liveOf(S.draft.items).map(it => ({ ingId: it.ingId || null, name: it.name, grams: +it.grams || 0, v: pickVals(it.v) }));
   const { t, grams } = totalsOf(items);
   const editing = S.draft.editingId && S.recipes.find(r => r.id === S.draft.editingId);
   const id = editing ? editing.id : uid("r");
   const doc = {
-    name, portions: Math.max(1, Math.round(+S.draft.portions || 1)), items,
+    name, description: (S.draft.description || "").trim(),
+    portions: Math.max(1, Math.round(+S.draft.portions || 1)), items,
     totals: Object.fromEntries(KEYS.map(k => [k, +t[k].toFixed(3)])), grams: +grams.toFixed(2),
     createdAt: editing?.createdAt || Date.now(), updatedAt: Date.now(),
   };
   const btn = $("#r-save"); btn.disabled = true;
   try {
     await Store.put("recipes", id, doc);
-    S.draft = emptyDraft(); saveDraft(); renderBuilder();
+    if (S.draft.fromCalc) { S.calc = emptyCalc(); saveLS(CALC_KEY, S.calc); calcB.render(); }
+    closeEditor();
     toast(editing ? `«${name}» aggiornata` : `«${name}» salvata nel ricettario`, { label: "Apri ricettario", run: () => { location.hash = "ricettario"; } });
   } catch (e) { handleWriteError(e, msg); }
   finally { btn.disabled = !S.draft.items.length; }
 });
+
+/** Carica una ricetta salvata nell'editor (dal ricettario). */
+function editRecipe(r) {
+  const load = () => {
+    S.draft = { name: r.name, description: r.description || "", portions: r.portions || 1, editingId: r.id, open: true,
+      items: (r.items || []).map(it => ({ key: uid("it"), ingId: it.ingId, name: it.name, grams: it.grams, v: pickVals(it.v || {}) })) };
+    saveLS(DRAFT_KEY, S.draft); renderEditor(); recB.render(); location.hash = "ricetta";
+  };
+  if (S.draft.open && (S.draft.items.length || S.draft.name) && S.draft.editingId !== r.id) {
+    const prev = clone(S.draft); load();
+    toast("Ho messo da parte la ricetta che stavi scrivendo", { label: "Riprendila", run: () => { S.draft = prev; saveLS(DRAFT_KEY, S.draft); renderEditor(); recB.render(); } });
+  } else load();
+}
 
 /* =========================================================
    DISPENSA
@@ -888,7 +1012,7 @@ function renderBook() {
   const q = norm($("#book-q").value);
   const list = [...S.recipes]
     .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-    .filter(r => !q || norm(r.name).includes(q) || r.items?.some(it => norm(it.name).includes(q)));
+    .filter(r => !q || norm(r.name).includes(q) || norm(r.description).includes(q) || r.items?.some(it => norm(it.name).includes(q)));
   if (!list.length) { box.innerHTML = `<p class="status">Nessuna ricetta corrisponde a «${esc($("#book-q").value)}».</p>`; return; }
   box.innerHTML = `<div class="book">${list.map(r => {
     const t = { ...zero(), ...(r.totals || {}) };
@@ -897,6 +1021,7 @@ function renderBook() {
     const chip = (k, lab, c) => `<div class="chip"><small style="--c:${c || "var(--muted)"}">${lab}</small><b>${fmt(k, shown[k])} g</b></div>`;
     return `<article class="rcard">
       <header><h3>${esc(r.name)}</h3><time datetime="${new Date(r.updatedAt || r.createdAt).toISOString()}">${fmtDate(r.updatedAt || r.createdAt)}</time></header>
+      ${r.description ? `<p class="desc">${esc(r.description)}</p>` : ""}
       <div class="hint num">${p > 1 ? `Per porzione (${p} porzioni) · ` : ""}${nf0.format(kcalOf(shown))} kcal · ${nf0.format((r.grams || 0) / p)} g</div>
       <div class="chips">
         ${chip("carbs", "Carbo", "var(--c-carbs)")}${chip("fat", "Grassi", "var(--c-fat)")}${chip("sat", "Saturi")}
@@ -907,7 +1032,7 @@ function renderBook() {
       </details>
       ${S.confirmRec === r.id
         ? `<div class="confirm">Eliminare «${esc(r.name)}» per entrambi?<span class="spacer"></span><button class="btn" type="button" data-rec-cancel>No</button><button class="btn danger solid" type="button" data-rec-del="${esc(r.id)}">Elimina</button></div>`
-        : `<div class="row"><button class="btn" type="button" data-rec-open="${esc(r.id)}">Apri nell'editor</button><span class="spacer"></span><button class="btn ghost danger" type="button" data-rec-ask="${esc(r.id)}">Elimina</button></div>`}
+        : `<div class="row"><button class="btn" type="button" data-rec-open="${esc(r.id)}">Modifica</button><span class="spacer"></span><button class="btn ghost danger" type="button" data-rec-ask="${esc(r.id)}">Elimina</button></div>`}
     </article>`;
   }).join("")}</div>`;
 }
@@ -915,23 +1040,14 @@ $("#book-q").addEventListener("input", renderBook);
 $("#book").addEventListener("click", async e => {
   const t = e.target.closest("button"); if (!t) return;
   if (t.dataset.recOpen) {
-    const r = S.recipes.find(x => x.id === t.dataset.recOpen); if (!r) return;
-    const loadIt = () => {
-      S.draft = { name: r.name, portions: r.portions || 1, editingId: r.id,
-        items: (r.items || []).map(it => ({ key: uid("it"), ingId: it.ingId, name: it.name, grams: it.grams, v: pickVals(it.v || {}) })) };
-      saveDraft(); renderBuilder(); location.hash = "ricetta";
-    };
-    if (S.draft.items.length && S.draft.editingId !== r.id) {
-      const prev = JSON.parse(JSON.stringify(S.draft)); loadIt();
-      toast("Ho messo da parte la ricetta che stavi componendo", { label: "Riprendila", run: () => { S.draft = prev; saveDraft(); renderBuilder(); } });
-    } else loadIt();
+    const r = S.recipes.find(x => x.id === t.dataset.recOpen); if (r) editRecipe(r);
   } else if (t.dataset.recAsk) { S.confirmRec = t.dataset.recAsk; renderBook(); }
   else if ("recCancel" in t.dataset) { S.confirmRec = null; renderBook(); }
   else if (t.dataset.recDel) {
     const r = S.recipes.find(x => x.id === t.dataset.recDel); S.confirmRec = null;
     try {
       await Store.remove("recipes", t.dataset.recDel);
-      if (S.draft.editingId === t.dataset.recDel) { S.draft.editingId = null; saveDraft(); renderDraftMeta(); }
+      if (S.draft.editingId === t.dataset.recDel) { S.draft.editingId = null; saveLS(DRAFT_KEY, S.draft); renderEditor(); }
       toast(`«${r?.name || "Ricetta"}» eliminata`);
     } catch (err) { handleWriteError(err); renderBook(); }
   }
@@ -955,7 +1071,7 @@ function subscribe(col, after) {
 }
 
 async function start() {
-  route(); renderBuilder(); renderIngredients(); renderBook();
+  route(); renderEditor(); calcB.render(); recB.render(); renderIngredients(); renderBook();
   await Store.init(); setMode();
   if (Store.mode === "shared") {
     try {
@@ -963,8 +1079,8 @@ async function start() {
       if (user && (await user.can("data.write")) === false) { S.readOnly = true; setMode(); }
     } catch (_) {}
   }
-  subscribe("ingredients", () => { renderIngredients(); renderItems(); renderLabel(); if (!elSuggest.hidden) openSuggest(); });
-  subscribe("recipes", () => { renderBook(); renderDraftMeta(); if (S.confirmIng) renderIngredients(); });
+  subscribe("ingredients", () => { renderIngredients(); for (const b of [calcB, recB]) { b.render(); b.refreshSuggest(); } });
+  subscribe("recipes", () => { renderBook(); renderEditor(); if (S.confirmIng) renderIngredients(); });
 }
 start();
 })();
