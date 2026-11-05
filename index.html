@@ -300,7 +300,10 @@ table.data tr.is-editing td { background: var(--accent-soft); }
       <h2>Dispensa</h2>
       <p class="lede">Gli ingredienti con i valori dell'etichetta, sempre riferiti a 100 g di prodotto. Li inserisci una volta e poi li ritrovi in ogni ricetta.</p>
     </div>
-    <form class="panel ing-form" id="ing-form" novalidate>
+    <div class="row">
+      <button class="btn primary" id="ing-new" type="button">+ Aggiungi ingrediente in dispensa</button>
+    </div>
+    <form class="panel ing-form" id="ing-form" novalidate hidden>
       <div class="row">
         <h3 id="ing-form-title">Nuovo ingrediente</h3>
         <span class="spacer"></span>
@@ -321,7 +324,7 @@ table.data tr.is-editing td { background: var(--accent-soft); }
       <p class="warn" id="f-msg" hidden></p>
       <div class="row">
         <button class="btn primary" id="f-submit" type="submit">Aggiungi alla dispensa</button>
-        <button class="btn" id="f-cancel" type="button" hidden>Annulla modifica</button>
+        <button class="btn" id="f-cancel" type="button">Annulla</button>
       </div>
     </form>
     <div class="row">
@@ -780,7 +783,7 @@ function renderIngredients() {
   if (!S.ingredients.length) {
     box.innerHTML = `<div class="empty-card">
       <strong>Nessun ingrediente ancora</strong>
-      <span>Copia i valori dall'etichetta (colonna "per 100 g") nel modulo qui sopra.<br>Se volete partire subito, posso aggiungere ${STARTER.length} ingredienti comuni con valori tipici da controllare.</span>
+      <span>Premi «Aggiungi ingrediente in dispensa» e copia i valori dall'etichetta (colonna "per 100 g").<br>Se volete partire subito, posso aggiungere ${STARTER.length} ingredienti comuni con valori tipici da controllare.</span>
       <button class="btn" type="button" data-act="starter">Aggiungi ingredienti di base</button>
     </div>`;
     return;
@@ -811,7 +814,6 @@ function fillForm(ing) {
   for (const k of KEYS) F[k].value = ing ? nfIn.format(ing[k] || 0) : "";
   $("#ing-form-title").textContent = ing ? `Modifica: ${ing.name}` : "Nuovo ingrediente";
   $("#f-submit").textContent = ing ? "Salva modifiche" : "Aggiungi alla dispensa";
-  $("#f-cancel").hidden = !ing;
   $("#f-msg").hidden = true;
   Object.values(F).forEach(el => el.setAttribute("aria-invalid", "false"));
 }
@@ -839,26 +841,36 @@ form.addEventListener("submit", async e => {
   const btn = $("#f-submit"); btn.disabled = true;
   try {
     await Store.put("ingredients", id, doc);
-    toast(prev ? `${name} aggiornato` : `${name} aggiunto alla dispensa`);
-    S.editIngId = null; fillForm(null); F.name.focus();
+    closeForm();
+    if (prev) toast(`${name} aggiornato`);
+    else toast(`${name} aggiunto alla dispensa`, { label: "Aggiungine un altro", run: () => openForm(null) });
   } catch (err) { handleWriteError(err, msg); }
   finally { btn.disabled = false; }
 });
-$("#f-cancel").addEventListener("click", () => { S.editIngId = null; fillForm(null); renderIngredients(); });
+function openForm(ing) {
+  S.editIngId = ing ? ing.id : null; S.confirmIng = null;
+  fillForm(ing); form.hidden = false; $("#ing-new").hidden = true; renderIngredients();
+  form.scrollIntoView({ behavior: "smooth", block: "start" }); F.name.focus({ preventScroll: true });
+}
+function closeForm() {
+  S.editIngId = null; fillForm(null); form.hidden = true; $("#ing-new").hidden = false; renderIngredients();
+}
+$("#ing-new").addEventListener("click", () => openForm(null));
+$("#f-cancel").addEventListener("click", closeForm);
+form.addEventListener("keydown", e => { if (e.key === "Escape") closeForm(); });
 $("#ing-q").addEventListener("input", renderIngredients);
 
 $("#ing-list").addEventListener("click", async e => {
   const t = e.target.closest("button"); if (!t) return;
   if (t.dataset.ingEdit) {
-    S.editIngId = t.dataset.ingEdit; S.confirmIng = null; fillForm(ingById(S.editIngId)); renderIngredients();
-    form.scrollIntoView({ behavior: "smooth", block: "start" }); F.name.focus({ preventScroll: true });
+    openForm(ingById(t.dataset.ingEdit));
   } else if (t.dataset.ingAsk) { S.confirmIng = t.dataset.ingAsk; renderIngredients(); }
   else if ("ingCancel" in t.dataset) { S.confirmIng = null; renderIngredients(); }
   else if (t.dataset.ingDel) {
     const ing = ingById(t.dataset.ingDel); S.confirmIng = null;
     try {
       await Store.remove("ingredients", t.dataset.ingDel);
-      if (S.editIngId === t.dataset.ingDel) { S.editIngId = null; fillForm(null); }
+      if (S.editIngId === t.dataset.ingDel) closeForm();
       toast(`${ing?.name || "Ingrediente"} eliminato`);
     } catch (err) { handleWriteError(err); renderIngredients(); }
   } else if (t.dataset.act === "starter") {
